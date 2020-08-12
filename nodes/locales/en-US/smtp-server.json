@@ -1,0 +1,45 @@
+{
+    "smtp-server": {
+      "label":{
+        "listen": "Listen",
+        "port":"Port",
+        "hostname": "Hostname",
+        "banner":"Banner",
+        "maxClients":"Max Clients",
+        "socketTimeout": "Socket",
+        "closeTimeout": "Close",
+        "authMethods": "Methods",
+        "usetls":"Enable secure (SSL/TLS) connection",
+        "authOptional": "Allow authentication, but do not require it",
+        "allowInsecureAuth": "Allow authentication even if connection is not secured first",
+        "maxHtmlLengthToParse":"Max HTML",
+        "skipHtmlToText":"Skip generating plaintext from HTML",
+        "skipTextToHtml":"Skip generating HTML from plaintext",
+        "skipImageLinks":"Skip converting CID attachments to data URL images",
+        "skipTextLinks":"Skip linkifying links in plaintext content"
+      },
+      "placeholder": {
+        "hostname": "SMTP Hostname (default: os.hostname())",
+        "banner": "SMTP Banner message (default: empty)",
+        "listen": "127.0.0.1",
+        "port":"8025",
+        "username":"any",
+        "password":"any",
+        "maxClients":"unlimited",
+        "socketTimeout": "60s",
+        "closeTimeout": "30s",
+        "maxHtmlLengthToParse": "Infinity (bytes)"
+      },
+      "header": {
+        "general": "General",
+        "timeout": "Timeout",
+        "parser": "Parser"
+      },
+      "tabs-label": {
+        "connection":"Connection",
+        "security":"Security",
+        "authentication":"Authentication",
+        "settings": "Settings"
+      }
+    }
+}

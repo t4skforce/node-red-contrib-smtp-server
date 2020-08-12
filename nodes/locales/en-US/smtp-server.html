@@ -1,0 +1,27 @@
+<script type="text/html" data-help-name="smtp-server">
+    <p>Starts a local SMTP-Server and forwards incomming e-mails and forwards them on as a msg.</p>
+    <p>The subject is loaded into <code>msg.topic</code> and <code>msg.payload</code> is the plain text body.
+       If there is text/html then that is returned in <code>msg.html</code>. <code>msg.from</code> and <code>msg.date</code> are also set if you need them.</p>
+    <p>Additionally <code>msg.header</code> contains the complete header object including
+    <i>to</i>, <i>cc</i> and other potentially useful properties.</p>
+    <p>Uses the <a href="https://nodemailer.com/extras/smtp-server/" target="_new">smtp-server module</a> - see that page for
+        information on configuration options if needed.</p>
+    <p><b>Note</b>: uses ports > 1024 or else the server won't start.</p>
+    <p>Any attachments supplied in the incoming email can be found in the <code>msg.attachments</code> property. This will be an array of objects where
+    each object represents a specific attachments.  The format of the object is:</p>
+
+<pre>
+{
+  contentType:        // The MIME content description
+  fileName:           // A suggested file name associated with this attachment
+  transferEncoding:   // How was the original email attachment encodded?
+  contentDisposition: // Unknown
+  generatedFileName:  // A suggested file name associated with this attachment
+  contentId:          // A unique generated ID for this attachment
+  checksum:           // A checksum against the data
+  length:             // Size of data in bytes
+  content:            // The actual content of the data contained in a Node.js Buffer object
+                      // We can turn this into a base64 data string with content.toString('base64')
+}
+</pre>
+</script>

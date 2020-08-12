@@ -1,0 +1,46 @@
+{
+  "name": "node-red-contrib-smtp-server",
+  "version": "1.0.0",
+  "description": "SMTP server on Node-RED",
+  "main": "index.js",
+  "scripts": {
+    "lint": "npx eslint . --ext .js --cache --fix",
+    "test": "npm link node-red & mocha test/**/*_spec.js"
+  },
+  "author": "@t4skforce",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/t4skforce/node-red-contrib-smtp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/t4skforce/node-red-contrib-smtp-server/issues"
+  },
+  "keywords": [
+    "node-red",
+    "smtp",
+    "smtp-server",
+    "email",
+    "mail"
+  ],
+  "dependencies": {
+    "mailparser": "^2.8.1",
+    "smtp-server": "^3.7.0",
+    "netmask": "^1.0.6"
+  },
+  "devDependencies": {
+    "eslint": "^7.6.0",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "node-red-node-test-helper": "^0.2.5"
+  },
+  "node-red": {
+    "nodes": {
+      "smtp-server": "nodes/smtp-server.js",
+      "smtp-tls": "nodes/smtp-tls.js"
+    }
+  }
+}

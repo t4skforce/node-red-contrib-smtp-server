@@ -1,0 +1,271 @@
+<script type="text/javascript">
+    RED.nodes.registerType('smtp-server', {
+        category: 'social',
+        color: '#3BABDD',
+        defaults: {
+            name: { value: '' }, // okay
+            banner: { value: '' }, // okay
+            listen: { value: '127.0.0.1' }, // okay
+            port: { value: 8025 }, // okay
+            usetls: { value:false }, // okay
+            tls: { type:"smtp-tls",required: false }, // okay
+            size: { value: -1 },
+            hideSize: { value: false },
+            authMethods: { value: 'PLAIN,LOGIN,CRAM-MD5' }, // okay
+            authOptional: { value: true }, // okay
+            hideSTARTTLS: { value: false },
+            hidePIPELINING: { value: false },
+            hide8BITMIME: { value: false },
+            hideSMTPUTF8: { value: false },
+            allowInsecureAuth: { value: true }, // okay
+            disableReverseLookup: { value: true },
+            maxClients: { value: -1 }, // okay
+            useProxy: { value: false },
+            useXClient: { value: false },
+            useXForward: { value: false },
+            lmtp: { value: false },
+            socketTimeout: { value: 60 },
+            closeTimeout: { value: 30 },
+            maxHtmlLengthToParse: { value: 0 },
+            skipHtmlToText: { value: false },
+            skipImageLinks: { value: false },
+            skipTextToHtml: { value: false },
+            skipTextLinks: { value: false },
+            users:{ value: [] }
+        },
+        inputs: 0,
+        outputs: 1,
+        outputLabels: [
+            'email'
+        ],
+        icon: 'smtp.svg',
+        label: function () {
+            return this.name || 'smtp-server';
+        },
+        paletteLabel: 'smtp server',
+        align: 'left',
+        oneditprepare: function () {
+          var node = this;
+          var tabs = RED.tabs.create({
+            id: 'node-config-smtp-server-tabs',
+            onchange: function (tab) {
+              $('#node-config-smtp-server-tabs-content').children().hide();
+              $('#' + tab.id).show();
+            }
+          });
+          tabs.addTab({
+            id: 'smtp-server-tab-connection',
+            label: this._('smtp-server.tabs-label.connection')
+          });
+          tabs.addTab({
+            id: 'smtp-server-tab-security',
+            label: this._('smtp-server.tabs-label.security')
+          });
+          tabs.addTab({
+            id: 'smtp-server-tab-authentication',
+            label: this._('smtp-server.tabs-label.authentication')
+          });
+          tabs.addTab({
+            id: 'smtp-server-tab-settings',
+            label: this._('smtp-server.tabs-label.settings')
+          });
+          setTimeout(function () {
+            tabs.resize();
+          }, 0);
+
+          $("#node-input-port").typedInput({type:"num",types:["num"]})
+          $("#node-input-listen").typedInput({type:"str",types:["str"]})
+          $("#node-input-maxClients").typedInput({type:"num",types:["num"]})
+          $("#node-input-socketTimeout").typedInput({type:"num",types:["num"]})
+          $("#node-input-closeTimeout").typedInput({type:"num",types:["num"]})
+          $("#node-input-maxHtmlLengthToParse").typedInput({type:"num",types:["num"]})
+
+          $("#node-input-usetls").on("click",function() {
+            if ($("#node-input-usetls").is(':checked')) {
+                $("#node-row-tls").show();
+            } else {
+                $("#node-row-tls").hide();
+            }
+          });
+
+          // users
+          var username = this._("node-red:common.label.username");
+          var password = this._("node-red:common.label.password");
+          $('#node-input-user-container').css('min-height','150px').css('min-width','450px').editableList({
+            addItem: function(container,i,opt) {
+              var user = opt;
+              container.css({overflow: 'hidden',whiteSpace: 'nowrap'});
+              let fragment = document.createDocumentFragment();
+
+              function addField(text,icon,name,type,value) {
+                var row = $('<div/>',{class:"form-row"}).appendTo(fragment);
+                var label = $('<label/>',{id:"node-input-user-"+name+"-"+i}).appendTo(row);
+                var icon = $('<i/>',{class:'fa '+icon}).appendTo(label);
+                var span = $('<span/>').appendTo(label);
+                span.text(' ' + text);
+                var input = $('<input/>',{class:"node-input-user-"+name,id:"node-input-user-"+name+"-"+i,type:type}).appendTo(row);
+                input.val(value);
+              }
+
+              addField(username,'fa-user','username','text', opt.username || '');
+              addField(password,'fa-lock','password','password', opt.password || '');
+
+              container[0].appendChild(fragment);
+            },
+            removable: true,
+            sortable: true
+          });
+
+          if (!node.users || node.users.length == 0) {
+            node.users = [{username:'',password:''}];
+          }
+          for (var i=0; i<node.users.length; i++) {
+              $("#node-input-user-container").editableList('addItem',node.users[i]);
+          }
+
+          // authMethods
+          $(".authMethods-button-group").on("click", function() {
+              $(this).toggleClass("selected");
+              var values = [];
+              $(".authMethods-button-group.selected").each(function(){
+                values.push($(this).text());
+              });
+              $("#node-input-authMethods").val(values.join(','))
+          });
+          $("#node-input-authMethods").val().split(',').forEach(function (element, index) {
+            if(element.length > 0) {
+              $(".authMethods-button-group:contains("+element+")").addClass("selected");
+            }
+          })
+        },
+        oneditsave: function() {
+            var items = $("#node-input-user-container").editableList('items');
+            var node = this;
+            node.users= [];
+            items.each(function(i) {
+                var item = $(this);
+                node.users.push({
+                    username: item.find(".node-input-user-username").val(),
+                    password: item.find(".node-input-user-password").val(),
+                });
+            });
+        },
+        oneditresize: function(size) {
+            var rows = $("#dialog-form>div:not(#node-config-smtp-server-tabs-content)");
+            var height = size.height;
+            for (var i=0; i<rows.length; i++) {
+                height -= $(rows[i]).outerHeight(true);
+            }
+            var editorRow = $("#dialog-form .node-input-user-container-row");
+            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
+            height -= 354;
+
+            $("#node-input-user-container").editableList('height', height);
+        }
+    });
+</script>
+
+<!-- icons: https://fontawesome.com/v4.7.0/icons/ -->
+<script type="text/x-red" data-template-name="smtp-server">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name">
+    </div>
+
+    <div class="form-row">
+        <ul style="min-width: 600px; margin-bottom: 20px;" id="node-config-smtp-server-tabs"></ul>
+    </div>
+    <div id="node-config-smtp-server-tabs-content" style="min-height:150px;">
+        <div id="smtp-server-tab-connection" style="display:none">
+          <hr><h4><span data-i18n="smtp-server.header.general"></h4>
+          <div class="form-row">
+            <label for="node-input-listen"><i class="fa fa-globe"></i> <span data-i18n="smtp-server.label.listen"></label>
+            <input type="text" id="node-input-listen" data-i18n="[placeholder]smtp-server.placeholder.listen" style="width:31%;">
+            <label for="node-input-port" style="text-align:right"> <span data-i18n="smtp-server.label.port" style="margin-right:10px"></span></label>
+            <input type="number" id="node-input-port" data-i18n="[placeholder]smtp-server.placeholder.port" style="width:31%;">
+          </div>
+          <div class="form-row">
+              <label for="node-input-maxClients"><i class="fa fa-tachometer"></i> <span data-i18n="smtp-server.label.maxClients"></span></label>
+              <input type="number" id="node-input-maxClients" data-i18n="[placeholder]smtp-server.placeholder.maxClients" style="width:31%;">
+          </div>
+
+          <hr><h4><span data-i18n="smtp-server.header.timeout"></h4>
+          <div class="form-row">
+              <label for="node-input-socketTimeout"><i class="fa fa-clock-o"></i> <span data-i18n="smtp-server.label.socketTimeout"></span></label>
+              <input type="number" id="node-input-socketTimeout" data-i18n="[placeholder]smtp-server.placeholder.socketTimeout" style="width:31%;">
+          </div>
+          <div class="form-row">
+              <label for="node-input-closeTimeout"><i class="fa fa-clock-o"></i> <span data-i18n="smtp-server.label.closeTimeout"></span></label>
+              <input type="number" id="node-input-closeTimeout" data-i18n="[placeholder]smtp-server.placeholder.closeTimeout" style="width:31%;">
+          </div>
+
+        </div>
+
+        <div id="smtp-server-tab-security" style="display:none">
+          <div class="form-row">
+            <input type="checkbox" id="node-input-usetls" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
+            <label for="node-input-usetls" style="width: auto"><span data-i18n="smtp-server.label.usetls"></span></label>
+            <div id="node-row-tls" class="hide">
+                <label style="width: auto; margin-left: 20px; margin-right: 10px;" for="node-input-tls"><span data-i18n="node-red:httpin.tls-config"></span></label><input type="text" style="width: 300px" id="node-input-tls">
+            </div>
+          </div>
+          <div class="form-row">
+            <input type="checkbox" id="node-input-authOptional" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
+            <label for="node-input-authOptional" style="width: auto"><span data-i18n="smtp-server.label.authOptional"></span></label>
+          </div>
+          <div class="form-row">
+            <input type="checkbox" id="node-input-allowInsecureAuth" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
+            <label for="node-input-allowInsecureAuth" style="width: auto"><span data-i18n="smtp-server.label.allowInsecureAuth"></span></label>
+          </div>
+          <!-- IP (White/Blacklist) -->
+          <!-- From (White/Blacklist) -->
+          <!-- To (White/Blacklist) -->
+        </div>
+
+        <div id="smtp-server-tab-authentication">
+          <div class="form-row">
+            <label stlye="with:100px;"><i class="fa fa-lock"></i> <span data-i18n="smtp-server.label.authMethods"></span></label>
+            <span class="button-group" role="group"><button type="button" class="red-ui-button toggle authMethods-button-group">PLAIN</button><button type="button" class="red-ui-button toggle authMethods-button-group">LOGIN</button><button type="button" class="red-ui-button toggle authMethods-button-group">CRAM-MD5</button><button type="button" class="red-ui-button toggle authMethods-button-group">XOAUTH2</button></span>
+            <input type="hidden" id="node-input-authMethods">
+          </div>
+          <div class="form-row node-input-user-container-row">
+            <ol id="node-input-user-container"></ol>
+          </div>
+        </div>
+
+        <div id="smtp-server-tab-settings" style="display:none">
+          <hr><h4><span data-i18n="smtp-server.header.general"></h4>
+          <div class="form-row">
+              <label for="node-input-hostname"><i class="fa fa-tag"></i> <span data-i18n="smtp-server.label.hostname"></span></label>
+              <input type="text" id="node-input-hostname" data-i18n="[placeholder]smtp-server.placeholder.hostname">
+          </div>
+          <div class="form-row">
+              <label for="node-input-banner"><i class="fa fa-tag"></i> <span data-i18n="smtp-server.label.banner"></span></label>
+              <input type="text" id="node-input-banner" data-i18n="[placeholder]smtp-server.placeholder.banner">
+          </div>
+
+          <hr><h4><span data-i18n="smtp-server.header.parser"></h4>
+          <div class="form-row">
+              <label for="node-input-maxHtmlLengthToParse"><i class="fa fa-tachometer"></i> <span data-i18n="smtp-server.label.maxHtmlLengthToParse"></span></label>
+              <input type="number" id="node-input-maxHtmlLengthToParse" data-i18n="[placeholder]smtp-server.placeholder.maxHtmlLengthToParse" style="width:31%;">
+          </div>
+          <div class="form-row">
+            <input type="checkbox" id="node-input-skipHtmlToText" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
+            <label for="node-input-skipHtmlToText" style="width: auto"><span data-i18n="smtp-server.label.skipHtmlToText"></span></label>
+          </div>
+          <div class="form-row">
+            <input type="checkbox" id="node-input-skipTextToHtml" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
+            <label for="node-input-skipTextToHtml" style="width: auto"><span data-i18n="smtp-server.label.skipTextToHtml"></span></label>
+          </div>
+          <div class="form-row">
+            <input type="checkbox" id="node-input-skipImageLinks" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
+            <label for="node-input-skipImageLinks" style="width: auto"><span data-i18n="smtp-server.label.skipImageLinks"></span></label>
+          </div>
+          <div class="form-row">
+            <input type="checkbox" id="node-input-skipTextLinks" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
+            <label for="node-input-skipTextLinks" style="width: auto"><span data-i18n="smtp-server.label.skipTextLinks"></span></label>
+          </div>
+
+        </div>
+    </div>
+</script>
