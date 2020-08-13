@@ -135,6 +135,7 @@ module.exports = function (RED) {
           if (mailMessage.attachments) { msg.attachments = mailMessage.attachments; }
           else { msg.attachments = []; }
           node.send(msg);
+          node.status({ fill: 'green', shape: 'dot', text: `${session.remoteAddress} - sendt` })
         })
         .catch(err => {
           node.status({ fill: 'red', shape: 'dot', text: 'parser error' })
@@ -143,7 +144,7 @@ module.exports = function (RED) {
         stream.on("end", callback);
       },
       onClose (session) {
-        //node.status({ fill: 'green', shape: 'dot', text: `${listen}:${port} - ready` })
+        node.status({ fill: 'green', shape: 'dot', text: `${listen}:${port} - ready` })
       }
     }
 
