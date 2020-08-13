@@ -19,7 +19,7 @@ module.exports = function (RED) {
     const size = config.size || undefined
     const hideSize = config.hideSize || false
     const users = config.users || []
-    const authMethods = (config.authMethods || 'PLAIN, LOGIN').split(',').map(v => v.toUpperCase().trim())
+    const authMethods = config.authMethods || ['PLAIN, LOGIN','CRAM-MD5']
     const authOptional = config.authOptional === true || users.length === 0 || authMethods.length === 0
     const hideSTARTTLS = config.hideSTARTTLS === true
     const hidePIPELINING = config.hidePIPELINING === true
@@ -34,10 +34,22 @@ module.exports = function (RED) {
     const lmtp = config.lmtp === true
     const socketTimeout = (config.socketTimeout || 60) * 1000
     const closeTimeout = (config.closeTimeout || 30) * 1000
+    const ip = config.ip || []
+    const from = config.from || []
+    const to = config.to || []
+    const disabledCommands = config.disabledCommands || []
 
 
     if(authOptional === true) {
-        node.warn('Authentification is optional as per configuration');
+        if(config.authOptional === true) {
+          node.warn('Authentification disabled: Security -> Optional Authentication');
+        } else if(users.length === 0) {
+          node.warn('Authentification disabled: Authentification -> Users is empty');
+        } else if(authMethods.length === 0) {
+          node.warn('Authentification disabled: Authentification -> Methods is empty');
+        } else {
+          node.warn('Authentification disabled');
+        }
     }
 
     // parser
@@ -64,20 +76,24 @@ module.exports = function (RED) {
         return callback() // pass through
       },
       onAuth (auth, session, callback) {
-        if(auth.username === username) {
-            if ((auth.method === 'PLAIN' || auth.method === 'LOGIN') && (auth.password === password || password === undefined)) {
-              return callback(null,{ user:auth.username }) // pass through
-            } else if(auth.method === "XOAUTH2" && auth.accessToken === password) {
-              return callback(null,{ user:auth.username }) // pass through
-            } else if(auth.method === "CRAM-MD5" && auth.validatePassword(password)) {
-              return callback(null,{ user:auth.username }) // pass through
-            }
+        if(users.length > 0) {
+          var user = undefined;
+          if (auth.method === 'PLAIN' || auth.method === 'LOGIN' || auth.method === "XOAUTH2") {
+            user = users.find(u => u.username === auth.username && u.password === auth.password)
+          } else if(auth.method === "CRAM-MD5") {
+            user = users.find(u => u.username === auth.username && auth.validatePassword(u.password))
+          }
+          if(user) {
+            return callback(null,{ user:user.username })
+          }
         } else if(authOptional) {
-          return callback(null,{user:session.remoteAddress}) // pass through
+          return callback(null,{ user:session.remoteAddress }) // pass through
         }
-
         node.status({ fill: 'red', shape: 'dot', text: `error auth (${session.remoteAddress})` })
-        if (auth.method === 'XOAUTH2') {return callback(null,{data:{status:'401',schemes:'bearer mac',scope:'https://mail.google.com/'}});}
+        node.warn(`Error Authenticating (ip:${session.remoteAddress}, user:${auth.username}, pass:${auth.password})`)
+        if (auth.method === 'XOAUTH2') {
+          return callback(null,{data:{status:'401',schemes:'bearer mac',scope:'https://mail.google.com/'}})
+        }
         return callback(new Error("Invalid authentification"))
       },
       onMailFrom (address, session, callback) {
@@ -100,7 +116,14 @@ module.exports = function (RED) {
           var msg = {
             topic: mailMessage.subject,
             date: mailMessage.date,
-            payload: mailMessage.text
+            payload: mailMessage.text,
+            session: {
+              id: session.id,
+              remoteAddress: session.remoteAddress,
+              clientHostname: session.clientHostname,
+              user: session.user,
+              transmissionType: session.transmissionType
+            }
           };
           msg.header = {};
           mailMessage.headers.forEach((v, k) => {msg.header[k] = v;});
@@ -123,6 +146,16 @@ module.exports = function (RED) {
         //node.status({ fill: 'green', shape: 'dot', text: `${listen}:${port} - ready` })
       }
     }
+
+    node.warn({
+      options:options,
+      users:users,
+      ip:ip,
+      from:from,
+      to:to,
+      disabledCommands:disabledCommands,
+      maxClients: config.maxClients
+    });
 
     const server = new SMTPServer(options)
     node.log(`Binding smtp-server on ${listen}:${port}`)

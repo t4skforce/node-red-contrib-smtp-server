@@ -63,7 +63,7 @@ module.exports = function(RED) {
             passphrase: {type:"password"}
         },
         settings: {
-            tlsConfigDisableLocalFiles: {
+            smtpTlsConfigDisableLocalFiles: {
                 value: false,
                 exportable: true
             }

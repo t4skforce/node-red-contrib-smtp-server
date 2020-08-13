@@ -7,31 +7,38 @@
             banner: { value: '' }, // okay
             listen: { value: '127.0.0.1' }, // okay
             port: { value: 8025 }, // okay
-            usetls: { value:false }, // okay
-            tls: { type:"smtp-tls",required: false }, // okay
-            size: { value: -1 },
-            hideSize: { value: false },
-            authMethods: { value: 'PLAIN,LOGIN,CRAM-MD5' }, // okay
+            usetls: { value: false }, // okay
+            tls: { type:"smtp-tls", required: false }, // okay
+            size: { value: '' },
+            hideSize: { value: false }, // okay
+            authMethods: { value: ['PLAIN','LOGIN','CRAM-MD5'] }, // okay
             authOptional: { value: true }, // okay
-            hideSTARTTLS: { value: false },
-            hidePIPELINING: { value: false },
-            hide8BITMIME: { value: false },
-            hideSMTPUTF8: { value: false },
+            hideSTARTTLS: { value: false }, // okay
+            hidePIPELINING: { value: false }, // okay
+            hide8BITMIME: { value: false }, // okay
+            hideSMTPUTF8: { value: false }, // okay
             allowInsecureAuth: { value: true }, // okay
-            disableReverseLookup: { value: true },
-            maxClients: { value: -1 }, // okay
-            useProxy: { value: false },
-            useXClient: { value: false },
-            useXForward: { value: false },
-            lmtp: { value: false },
-            socketTimeout: { value: 60 },
-            closeTimeout: { value: 30 },
-            maxHtmlLengthToParse: { value: 0 },
-            skipHtmlToText: { value: false },
-            skipImageLinks: { value: false },
-            skipTextToHtml: { value: false },
-            skipTextLinks: { value: false },
-            users:{ value: [] }
+            disableReverseLookup: { value: true }, // okay
+            maxClients: { value: '' }, // okay
+            useProxy: { value: false }, // okay
+            useXClient: { value: false }, // okay
+            useXForward: { value: false }, // okay
+            lmtp: { value: false }, // okay
+            socketTimeout: { value: 60 }, // okay
+            closeTimeout: { value: 30 }, // okay
+            maxHtmlLengthToParse: { value: '' }, // okay
+            skipHtmlToText: { value: false }, // okay
+            skipImageLinks: { value: false }, // okay
+            skipTextToHtml: { value: false }, // okay
+            skipTextLinks: { value: false }, // okay
+            users:{ value: [] },
+            ip:{ value: [{ip:"127.0.0.1", mask:32}, {ip:'10.0.0.0',mask:8},{ip:'172.16.0.0',mask:12},{ip:'192.168.0.0',mask:16}]},
+            ipFilter: { value: true },
+            from:{ value: [{t:'re',v:'/.*/i'}] },
+            fromFilter: { value: false },
+            to:{ value: [{t:'re',v:'/.*/i'}] },
+            toFilter: { value: false },
+            disabledCommands: { value: [] }
         },
         inputs: 0,
         outputs: 1,
@@ -46,39 +53,66 @@
         align: 'left',
         oneditprepare: function () {
           var node = this;
+
+          var sectabs = RED.tabs.create({
+            id: 'node-config-smtp-server-sec-tabs',
+            onchange: function (tab) {
+              $('#node-config-smtp-server-sec-tabs-content').children().hide();
+              $('#' + tab.id).show();
+            }
+          });
+          sectabs.addTab({ id: 'smtp-server-sec-tab-ip', label: this._('smtp-server.tabs-label.ip') });
+          sectabs.addTab({ id: 'smtp-server-sec-tab-from', label: this._('smtp-server.tabs-label.from') });
+          sectabs.addTab({ id: 'smtp-server-sec-tab-to', label: this._('smtp-server.tabs-label.to') });
+          sectabs.addTab({ id: 'smtp-server-sec-tab-command', label: this._('smtp-server.tabs-label.command') });
+
           var tabs = RED.tabs.create({
             id: 'node-config-smtp-server-tabs',
             onchange: function (tab) {
               $('#node-config-smtp-server-tabs-content').children().hide();
               $('#' + tab.id).show();
+              if(tab.id === 'smtp-server-tab-security') {
+                setTimeout(sectabs.resize, 0);
+              }
+              setTimeout(function(){$("#dialog-form").trigger('resize');},0);
             }
           });
-          tabs.addTab({
-            id: 'smtp-server-tab-connection',
-            label: this._('smtp-server.tabs-label.connection')
-          });
-          tabs.addTab({
-            id: 'smtp-server-tab-security',
-            label: this._('smtp-server.tabs-label.security')
-          });
-          tabs.addTab({
-            id: 'smtp-server-tab-authentication',
-            label: this._('smtp-server.tabs-label.authentication')
-          });
-          tabs.addTab({
-            id: 'smtp-server-tab-settings',
-            label: this._('smtp-server.tabs-label.settings')
-          });
-          setTimeout(function () {
-            tabs.resize();
-          }, 0);
+          tabs.addTab({ id: 'smtp-server-tab-connection', label: this._('smtp-server.tabs-label.connection') });
+          tabs.addTab({ id: 'smtp-server-tab-security', label: this._('smtp-server.tabs-label.security') });
+          tabs.addTab({ id: 'smtp-server-tab-authentication', label: this._('smtp-server.tabs-label.authentication') });
+          tabs.addTab({ id: 'smtp-server-tab-settings', label: this._('smtp-server.tabs-label.settings') });
+          setTimeout(tabs.resize, 0);
 
-          $("#node-input-port").typedInput({type:"num",types:["num"]})
-          $("#node-input-listen").typedInput({type:"str",types:["str"]})
-          $("#node-input-maxClients").typedInput({type:"num",types:["num"]})
-          $("#node-input-socketTimeout").typedInput({type:"num",types:["num"]})
-          $("#node-input-closeTimeout").typedInput({type:"num",types:["num"]})
-          $("#node-input-maxHtmlLengthToParse").typedInput({type:"num",types:["num"]})
+          var listen = $("#node-input-listen");
+          listen.typedInput({types:[{
+              value:"ip",label:"",icon:"icons/node-red/white-globe.svg",
+              validate:/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+          }]});
+          var port = $("#node-input-port");
+          port.typedInput({types:[{
+            value:"num",label:"",icon:"red/images/typedInput/09.svg",
+            validate: function(val) { return val > 0 && val < 65535; }
+          }]})
+
+          var maxClients = $("#node-input-maxClients");
+          maxClients.typedInput({types:[{
+            value:"num",label:"",icon:"red/images/typedInput/09.svg",
+            validate: function(val) { return val === '' || val > 0; }
+          }]});
+          maxClients.typedInput({type:"num",types:["num"]});
+          // $("#node-input-maxClients").typedInput({default:'str',types:['msg','flow','global','str','num','bool','json','re','date','jsonata','bin','env','node','cred']})
+          $("#node-input-socketTimeout").typedInput({types:[{
+            value:"num",label:"",icon:"red/images/typedInput/09.svg",
+            validate: function(val) { return val === '' || val > 0; }
+          }]});
+          $("#node-input-closeTimeout").typedInput({types:[{
+            value:"num",label:"",icon:"red/images/typedInput/09.svg",
+            validate: function(val) { return val === '' || val > 0; }
+          }]});
+          $("#node-input-maxHtmlLengthToParse").typedInput({types:[{
+            value:"num",label:"",icon:"red/images/typedInput/09.svg",
+            validate: function(val) { return val === '' || val > 0; }
+          }]});
 
           $("#node-input-usetls").on("click",function() {
             if ($("#node-input-usetls").is(':checked')) {
@@ -98,12 +132,14 @@
               let fragment = document.createDocumentFragment();
 
               function addField(text,icon,name,type,value) {
-                var row = $('<div/>',{class:"form-row"}).appendTo(fragment);
+                var row = $('<div/>',{class:"form-row",style:'margin-top:7px; margin-bottom:7px;'}).appendTo(fragment);
                 var label = $('<label/>',{id:"node-input-user-"+name+"-"+i}).appendTo(row);
                 var icon = $('<i/>',{class:'fa '+icon}).appendTo(label);
                 var span = $('<span/>').appendTo(label);
                 span.text(' ' + text);
-                var input = $('<input/>',{class:"node-input-user-"+name,id:"node-input-user-"+name+"-"+i,type:type}).appendTo(row);
+                var input = $('<input/>',{class:"node-input-user-"+name,id:"node-input-user-"+name+"-"+i,style:'min-width:415px',type:type}).appendTo(row);
+                if(type==='password') { input.typedInput({type:"cred",types:["cred"]}); }
+                else { input.typedInput({type:"str",types:["str"]}); }
                 input.val(value);
               }
 
@@ -115,24 +151,122 @@
             removable: true,
             sortable: true
           });
-
           if (!node.users || node.users.length == 0) {
             node.users = [{username:'',password:''}];
           }
-          for (var i=0; i<node.users.length; i++) {
-              $("#node-input-user-container").editableList('addItem',node.users[i]);
+          node.users.forEach(function (user, index) {
+            $("#node-input-user-container").editableList('addItem',user);
+          });
+
+          // Allowed IP
+          var ipNetmask = this._("smtp-server.label.ipNetmask");
+          $('#node-input-ip-container').css('min-height','250px').css('min-width','450px').editableList({
+            addItem: function(container,i,opt) {
+              container.css({overflow: 'hidden',whiteSpace: 'nowrap'});
+              let fragment = document.createDocumentFragment();
+              var row = $('<div/>',{class:"form-row",style:'margin-bottom:0px'}).appendTo(fragment);
+              var label = $('<label/>',{id:"node-input-user-ip-"+i}).appendTo(row);
+              var icon = $('<i/>',{class:'fa '+icon}).appendTo(label);
+              var span = $('<span/>').appendTo(label);
+              span.text(' '+ipNetmask);
+              var input = $('<input/>',{class:"node-input-user-ip",id:"node-input-user-ip-"+i,style:'min-width:310px',type:'text'}).appendTo(row);
+              input.val(opt.ip || '127.0.0.1');
+              input.typedInput({
+                types:[{
+                  value:"ip", label:"", icon:"icons/node-red/white-globe.svg",
+                  validate:/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+                }]
+              });
+
+              var selectField = $('<select/>',{class:"node-input-rule-type",style:"width:100px; margin-left:5px;"}).appendTo(row);
+              for (var i=0; i<=32; i++) {
+                  selectField.append($("<option></option>").val(i).text(i));
+              }
+              selectField.val(opt.mask || 32);
+              container[0].appendChild(fragment);
+            },
+            removable: true,
+            sortable: true
+          });
+          if(!node.ip) {
+            node.ip = []
           }
+          node.ip.forEach(function (item, index) {
+            $("#node-input-ip-container").editableList('addItem',item);
+          });
+
+          // Allowed From
+          var allowedFrom = this._("smtp-server.label.allowedFrom");
+          $('#node-input-from-container').css('min-height','250px').css('min-width','450px').editableList({
+            addItem: function(container,i,opt) {
+              container.css({overflow: 'hidden',whiteSpace: 'nowrap'});
+              let fragment = document.createDocumentFragment();
+              var row = $('<div/>',{class:"form-row",style:'margin-bottom:0px'}).appendTo(fragment);
+              var label = $('<label/>',{id:"node-input-user-from-"+i}).appendTo(row);
+              var icon = $('<i/>',{class:'fa '+icon}).appendTo(label);
+              var span = $('<span/>').appendTo(label);
+              span.text(' '+allowedFrom);
+              var input = $('<input/>',{class:"node-input-user-from",id:"node-input-user-from-"+i,style:'min-width:415px',type:'text'}).appendTo(row);;
+              input.typedInput({
+                default: "re",
+                types:['str','re','flow','global','env']
+              });
+              input.typedInput('type',opt.t || 're');
+              input.typedInput('value',opt.v || '/.*/i');
+              container[0].appendChild(fragment);
+            },
+            removable: true,
+            sortable: true
+          });
+          if(!node.from) {
+            node.from = [];
+          }
+          node.from.forEach(function (item, index) {
+            $("#node-input-from-container").editableList('addItem',item);
+          });
+
+          var allowedTo = this._("smtp-server.label.allowedTo");
+          $('#node-input-to-container').css('min-height','250px').css('min-width','450px').editableList({
+            addItem: function(container,i,opt) {
+              var user = opt;
+              container.css({overflow: 'hidden',whiteSpace: 'nowrap'});
+              let fragment = document.createDocumentFragment();
+              var row = $('<div/>',{class:"form-row",style:'margin-bottom:0px'}).appendTo(fragment);
+              var label = $('<label/>',{id:"node-input-user-to-"+i}).appendTo(row);
+              var icon = $('<i/>',{class:'fa '+icon}).appendTo(label);
+              var span = $('<span/>').appendTo(label);
+              span.text(' '+allowedTo);
+              var input = $('<input/>',{class:"node-input-user-to",id:"node-input-user-to-"+i,style:'min-width:415px',type:'text'}).appendTo(row);;
+              input.typedInput({
+                default: "re",
+                types:['str','re','flow','global','env']
+              });
+              input.typedInput('type',opt.t || 're');
+              input.typedInput('value',opt.v || '/.*/i');
+              container[0].appendChild(fragment);
+            },
+            removable: true,
+            sortable: true
+          });
+          if(!node.to) {
+            node.to = []
+          }
+          node.to.forEach(function (item, index) {
+            $("#node-input-to-container").editableList('addItem',item);
+          });
 
           // authMethods
           $(".authMethods-button-group").on("click", function() {
               $(this).toggleClass("selected");
-              var values = [];
+              node.authMethods = [];
               $(".authMethods-button-group.selected").each(function(){
-                values.push($(this).text());
+                node.authMethods.push($(this).text());
               });
-              $("#node-input-authMethods").val(values.join(','))
           });
-          $("#node-input-authMethods").val().split(',').forEach(function (element, index) {
+          if(!node.authMethods) {
+            node.authMethods = ['PLAIN','LOGIN','CRAM-MD5'];
+          }
+          node.authMethods.forEach(function (element, index) {
             if(element.length > 0) {
               $(".authMethods-button-group:contains("+element+")").addClass("selected");
             }
@@ -144,29 +278,39 @@
             node.users= [];
             items.each(function(i) {
                 var item = $(this);
-                node.users.push({
-                    username: item.find(".node-input-user-username").val(),
-                    password: item.find(".node-input-user-password").val(),
-                });
+                var username = item.find(".node-input-user-username").val().trim();
+                var password = item.find(".node-input-user-password").val().trim();
+                if(username !== '' || (password !== '' && username !== '')) {
+                  node.users.push({ username: username, password: password });
+                }
             });
         },
         oneditresize: function(size) {
-            var rows = $("#dialog-form>div:not(#node-config-smtp-server-tabs-content)");
-            var height = size.height;
-            for (var i=0; i<rows.length; i++) {
-                height -= $(rows[i]).outerHeight(true);
-            }
-            var editorRow = $("#dialog-form .node-input-user-container-row");
-            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
-            height -= 354;
-
-            $("#node-input-user-container").editableList('height', height);
+          var rows = $("#dialog-form>div:not(#node-config-smtp-server-tabs-content)");
+          var height = size.height;
+          for (var i=0; i<rows.length; i++) {
+              height -= $(rows[i]).outerHeight(true);
+          }
+          var editorRow = $("#dialog-form .node-input-user-container-row");
+          height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
+          height -= 17;
+          if(height < 450) {
+            height = 'auto';
+          }
+          $("#node-input-user-container").editableList('height', height);
         }
     });
 </script>
 
 <!-- icons: https://fontawesome.com/v4.7.0/icons/ -->
 <script type="text/x-red" data-template-name="smtp-server">
+    <style>
+        #node-config-smtp-server-tabs-content input[type="checkbox"] {
+          display: inline-block;
+          width: auto;
+          vertical-align: top;
+        }
+    </style>
     <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
         <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name">
@@ -177,56 +321,116 @@
     </div>
     <div id="node-config-smtp-server-tabs-content" style="min-height:150px;">
         <div id="smtp-server-tab-connection" style="display:none">
-          <hr><h4><span data-i18n="smtp-server.header.general"></h4>
-          <div class="form-row">
-            <label for="node-input-listen"><i class="fa fa-globe"></i> <span data-i18n="smtp-server.label.listen"></label>
-            <input type="text" id="node-input-listen" data-i18n="[placeholder]smtp-server.placeholder.listen" style="width:31%;">
-            <label for="node-input-port" style="text-align:right"> <span data-i18n="smtp-server.label.port" style="margin-right:10px"></span></label>
-            <input type="number" id="node-input-port" data-i18n="[placeholder]smtp-server.placeholder.port" style="width:31%;">
-          </div>
-          <div class="form-row">
-              <label for="node-input-maxClients"><i class="fa fa-tachometer"></i> <span data-i18n="smtp-server.label.maxClients"></span></label>
-              <input type="number" id="node-input-maxClients" data-i18n="[placeholder]smtp-server.placeholder.maxClients" style="width:31%;">
-          </div>
+          <h4><span data-i18n="smtp-server.header.general"></h4>
+            <div class="form-row">
+              <label for="node-input-listen"><i class="fa fa-globe"></i> <span data-i18n="smtp-server.label.listen"></label>
+              <input type="text" id="node-input-listen" data-i18n="[placeholder]smtp-server.placeholder.listen" style="width:31%;">
+              <label for="node-input-port" style="text-align:right"> <span data-i18n="smtp-server.label.port" style="margin-right:10px"></span></label>
+              <input type="number" id="node-input-port" data-i18n="[placeholder]smtp-server.placeholder.port" style="width:31%;">
+            </div>
+            <div class="form-row">
+                <label for="node-input-maxClients"><i class="fa fa-tachometer"></i> <span data-i18n="smtp-server.label.maxClients"></span></label>
+                <input type="number" id="node-input-maxClients" data-i18n="[placeholder]smtp-server.placeholder.maxClients" style="width:31%;">
+            </div>
+
+          <hr><h4><span data-i18n="smtp-server.header.options"></h4>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-lmtp" autocomplete="off">
+              <label for="node-input-lmtp" style="width: auto"><span data-i18n="smtp-server.label.lmtp"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-disableReverseLookup" autocomplete="off">
+              <label for="node-input-disableReverseLookup" style="width: auto"><span data-i18n="smtp-server.label.disableReverseLookup"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-useProxy" autocomplete="off">
+              <label for="node-input-useProxy" style="width: auto"><span data-i18n="smtp-server.label.useProxy"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-useXClient" autocomplete="off">
+              <label for="node-input-useXClient" style="width: auto"><span data-i18n="smtp-server.label.useXClient"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-useXForward" autocomplete="off">
+              <label for="node-input-useXForward" style="width: auto"><span data-i18n="smtp-server.label.useXForward"></span></label>
+            </div>
 
           <hr><h4><span data-i18n="smtp-server.header.timeout"></h4>
-          <div class="form-row">
-              <label for="node-input-socketTimeout"><i class="fa fa-clock-o"></i> <span data-i18n="smtp-server.label.socketTimeout"></span></label>
-              <input type="number" id="node-input-socketTimeout" data-i18n="[placeholder]smtp-server.placeholder.socketTimeout" style="width:31%;">
-          </div>
-          <div class="form-row">
-              <label for="node-input-closeTimeout"><i class="fa fa-clock-o"></i> <span data-i18n="smtp-server.label.closeTimeout"></span></label>
-              <input type="number" id="node-input-closeTimeout" data-i18n="[placeholder]smtp-server.placeholder.closeTimeout" style="width:31%;">
-          </div>
+            <div class="form-row">
+                <label for="node-input-socketTimeout"><i class="fa fa-clock-o"></i> <span data-i18n="smtp-server.label.socketTimeout"></span></label>
+                <input type="number" id="node-input-socketTimeout" data-i18n="[placeholder]smtp-server.placeholder.socketTimeout" style="width:31%;">
+            </div>
+            <div class="form-row">
+                <label for="node-input-closeTimeout"><i class="fa fa-clock-o"></i> <span data-i18n="smtp-server.label.closeTimeout"></span></label>
+                <input type="number" id="node-input-closeTimeout" data-i18n="[placeholder]smtp-server.placeholder.closeTimeout" style="width:31%;">
+            </div>
 
         </div>
 
         <div id="smtp-server-tab-security" style="display:none">
-          <div class="form-row">
-            <input type="checkbox" id="node-input-usetls" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
-            <label for="node-input-usetls" style="width: auto"><span data-i18n="smtp-server.label.usetls"></span></label>
-            <div id="node-row-tls" class="hide">
-                <label style="width: auto; margin-left: 20px; margin-right: 10px;" for="node-input-tls"><span data-i18n="node-red:httpin.tls-config"></span></label><input type="text" style="width: 300px" id="node-input-tls">
+          <h4><span data-i18n="smtp-server.header.general"></h4>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-usetls" autocomplete="off">
+              <label for="node-input-usetls" style="width: auto"><span data-i18n="smtp-server.label.usetls"></span></label>
+              <div id="node-row-tls" class="hide">
+                  <label style="width: auto; margin-left: 20px; margin-right: 10px;" for="node-input-tls"><span data-i18n="node-red:httpin.tls-config"></span></label><input type="text" style="width: 300px" id="node-input-tls">
+              </div>
             </div>
-          </div>
-          <div class="form-row">
-            <input type="checkbox" id="node-input-authOptional" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
-            <label for="node-input-authOptional" style="width: auto"><span data-i18n="smtp-server.label.authOptional"></span></label>
-          </div>
-          <div class="form-row">
-            <input type="checkbox" id="node-input-allowInsecureAuth" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
-            <label for="node-input-allowInsecureAuth" style="width: auto"><span data-i18n="smtp-server.label.allowInsecureAuth"></span></label>
-          </div>
-          <!-- IP (White/Blacklist) -->
-          <!-- From (White/Blacklist) -->
-          <!-- To (White/Blacklist) -->
+            <div class="form-row">
+              <input type="checkbox" id="node-input-authOptional" autocomplete="off">
+              <label for="node-input-authOptional" style="width: auto"><span data-i18n="smtp-server.label.authOptional"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-allowInsecureAuth" autocomplete="off">
+              <label for="node-input-allowInsecureAuth" style="width: auto"><span data-i18n="smtp-server.label.allowInsecureAuth"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-ipFilter" autocomplete="off">
+              <label for="node-input-ipFilter" style="width: auto"><span data-i18n="smtp-server.label.ipFilter"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-fromFilter" autocomplete="off">
+              <label for="node-input-fromFilter" style="width: auto"><span data-i18n="smtp-server.label.fromFilter"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-toFilter" autocomplete="off">
+              <label for="node-input-toFilter" style="width: auto"><span data-i18n="smtp-server.label.toFilter"></span></label>
+            </div>
+
+          <hr><h4><span data-i18n="smtp-server.header.access"></h4>
+            <div class="form-row">
+                <ul style="min-width: 600px; margin-bottom: 20px;" id="node-config-smtp-server-sec-tabs"></ul>
+            </div>
+            <div id="node-config-smtp-server-sec-tabs-content" style="min-height:150px;">
+              <div id="smtp-server-sec-tab-ip" style="display:none">
+                <!-- IP (White/Blacklist) -->
+                <div class="form-row node-input-ip-container-row">
+                  <ol id="node-input-ip-container"></ol>
+                </div>
+              </div>
+              <div id="smtp-server-sec-tab-from" style="display:none">
+                <!-- From (White/Blacklist) -->
+                <div class="form-row node-input-from-container-row">
+                  <ol id="node-input-from-container"></ol>
+                </div>
+              </div>
+              <div id="smtp-server-sec-tab-to" style="display:none">
+                <!-- To (White/Blacklist) -->
+                <div class="form-row node-input-to-container-row">
+                  <ol id="node-input-to-container"></ol>
+                </div>
+              </div>
+              <div id="smtp-server-sec-tab-commands" style="display:none">
+                <!-- disable commands -->
+              </div>
+            </div>
+
         </div>
 
         <div id="smtp-server-tab-authentication">
           <div class="form-row">
             <label stlye="with:100px;"><i class="fa fa-lock"></i> <span data-i18n="smtp-server.label.authMethods"></span></label>
             <span class="button-group" role="group"><button type="button" class="red-ui-button toggle authMethods-button-group">PLAIN</button><button type="button" class="red-ui-button toggle authMethods-button-group">LOGIN</button><button type="button" class="red-ui-button toggle authMethods-button-group">CRAM-MD5</button><button type="button" class="red-ui-button toggle authMethods-button-group">XOAUTH2</button></span>
-            <input type="hidden" id="node-input-authMethods">
           </div>
           <div class="form-row node-input-user-container-row">
             <ol id="node-input-user-container"></ol>
@@ -234,37 +438,60 @@
         </div>
 
         <div id="smtp-server-tab-settings" style="display:none">
-          <hr><h4><span data-i18n="smtp-server.header.general"></h4>
-          <div class="form-row">
-              <label for="node-input-hostname"><i class="fa fa-tag"></i> <span data-i18n="smtp-server.label.hostname"></span></label>
-              <input type="text" id="node-input-hostname" data-i18n="[placeholder]smtp-server.placeholder.hostname">
-          </div>
-          <div class="form-row">
-              <label for="node-input-banner"><i class="fa fa-tag"></i> <span data-i18n="smtp-server.label.banner"></span></label>
-              <input type="text" id="node-input-banner" data-i18n="[placeholder]smtp-server.placeholder.banner">
-          </div>
+          <h4><span data-i18n="smtp-server.header.general"></h4>
+            <div class="form-row">
+                <label for="node-input-hostname"><i class="fa fa-tag"></i> <span data-i18n="smtp-server.label.hostname"></span></label>
+                <input type="text" id="node-input-hostname" data-i18n="[placeholder]smtp-server.placeholder.hostname">
+            </div>
+            <div class="form-row">
+                <label for="node-input-banner"><i class="fa fa-tag"></i> <span data-i18n="smtp-server.label.banner"></span></label>
+                <input type="text" id="node-input-banner" data-i18n="[placeholder]smtp-server.placeholder.banner">
+            </div>
+
+          <hr><h4><span data-i18n="smtp-server.header.hidden"></h4>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-hideSTARTTLS" autocomplete="off">
+              <label for="node-input-hideSTARTTLS" style="width: auto"><span data-i18n="smtp-server.label.hideSTARTTLS"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-hidePIPELINING" autocomplete="off">
+              <label for="node-input-hidePIPELINING" style="width: auto"><span data-i18n="smtp-server.label.hidePIPELINING"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-hide8BITMIME" autocomplete="off">
+              <label for="node-input-hide8BITMIME" style="width: auto"><span data-i18n="smtp-server.label.hide8BITMIME"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-hideSMTPUTF8" autocomplete="off">
+              <label for="node-input-hideSMTPUTF8" style="width: auto"><span data-i18n="smtp-server.label.hideSMTPUTF8"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-hideSize" autocomplete="off">
+              <label for="node-input-hideSize" style="width: auto"><span data-i18n="smtp-server.label.hideSize"></span></label>
+            </div>
+
 
           <hr><h4><span data-i18n="smtp-server.header.parser"></h4>
-          <div class="form-row">
-              <label for="node-input-maxHtmlLengthToParse"><i class="fa fa-tachometer"></i> <span data-i18n="smtp-server.label.maxHtmlLengthToParse"></span></label>
-              <input type="number" id="node-input-maxHtmlLengthToParse" data-i18n="[placeholder]smtp-server.placeholder.maxHtmlLengthToParse" style="width:31%;">
-          </div>
-          <div class="form-row">
-            <input type="checkbox" id="node-input-skipHtmlToText" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
-            <label for="node-input-skipHtmlToText" style="width: auto"><span data-i18n="smtp-server.label.skipHtmlToText"></span></label>
-          </div>
-          <div class="form-row">
-            <input type="checkbox" id="node-input-skipTextToHtml" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
-            <label for="node-input-skipTextToHtml" style="width: auto"><span data-i18n="smtp-server.label.skipTextToHtml"></span></label>
-          </div>
-          <div class="form-row">
-            <input type="checkbox" id="node-input-skipImageLinks" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
-            <label for="node-input-skipImageLinks" style="width: auto"><span data-i18n="smtp-server.label.skipImageLinks"></span></label>
-          </div>
-          <div class="form-row">
-            <input type="checkbox" id="node-input-skipTextLinks" style="display: inline-block; width: auto; vertical-align: top;" autocomplete="off">
-            <label for="node-input-skipTextLinks" style="width: auto"><span data-i18n="smtp-server.label.skipTextLinks"></span></label>
-          </div>
+            <div class="form-row">
+                <label for="node-input-maxHtmlLengthToParse"><i class="fa fa-tachometer"></i> <span data-i18n="smtp-server.label.maxHtmlLengthToParse"></span></label>
+                <input type="number" id="node-input-maxHtmlLengthToParse" data-i18n="[placeholder]smtp-server.placeholder.maxHtmlLengthToParse" style="width:31%;">
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-skipHtmlToText" autocomplete="off">
+              <label for="node-input-skipHtmlToText" style="width: auto"><span data-i18n="smtp-server.label.skipHtmlToText"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-skipTextToHtml" autocomplete="off">
+              <label for="node-input-skipTextToHtml" style="width: auto"><span data-i18n="smtp-server.label.skipTextToHtml"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-skipImageLinks" autocomplete="off">
+              <label for="node-input-skipImageLinks" style="width: auto"><span data-i18n="smtp-server.label.skipImageLinks"></span></label>
+            </div>
+            <div class="form-row">
+              <input type="checkbox" id="node-input-skipTextLinks" autocomplete="off">
+              <label for="node-input-skipTextLinks" style="width: auto"><span data-i18n="smtp-server.label.skipTextLinks"></span></label>
+            </div>
 
         </div>
     </div>

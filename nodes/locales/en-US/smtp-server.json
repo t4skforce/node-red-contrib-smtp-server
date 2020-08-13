@@ -10,13 +10,29 @@
         "closeTimeout": "Close",
         "authMethods": "Methods",
         "usetls":"Enable secure (SSL/TLS) connection",
-        "authOptional": "Allow authentication, but do not require it",
+        "authOptional": "Optional Authentication (do not require authentication)",
         "allowInsecureAuth": "Allow authentication even if connection is not secured first",
         "maxHtmlLengthToParse":"Max HTML",
         "skipHtmlToText":"Skip generating plaintext from HTML",
         "skipTextToHtml":"Skip generating HTML from plaintext",
         "skipImageLinks":"Skip converting CID attachments to data URL images",
-        "skipTextLinks":"Skip linkifying links in plaintext content"
+        "skipTextLinks":"Skip linkifying links in plaintext content",
+        "hideSize": "Hide max allowed size from the client",
+        "hideSTARTTLS": "Hide STARTTLS in feature list",
+        "hidePIPELINING": "Hide PIPELINING in feature list",
+        "hide8BITMIME": "Hide 8BITMIME in feature list",
+        "hideSMTPUTF8": "Hide SMTPUTF8 in feature list",
+        "lmtp": "Use LMTP protocol instead of SMTP",
+        "disableReverseLookup": "Disable reverse lookup",
+        "useProxy": "Use PROXY header (version 1 only)",
+        "useXClient": "Use XCLIENT extension",
+        "useXForward": "Use XFORWARD extension",
+        "ipFilter": "Filter IP Addresses",
+        "fromFilter": "Filter From Addresses",
+        "toFilter": "Filter To Addresses",
+        "ipNetmask": "IP / Netmask",
+        "allowedFrom": "From",
+        "allowedTo": "To"
       },
       "placeholder": {
         "hostname": "SMTP Hostname (default: os.hostname())",
@@ -28,18 +44,25 @@
         "maxClients":"unlimited",
         "socketTimeout": "60s",
         "closeTimeout": "30s",
-        "maxHtmlLengthToParse": "Infinity (bytes)"
+        "maxHtmlLengthToParse": "unlimited (bytes)"
       },
       "header": {
         "general": "General",
         "timeout": "Timeout",
-        "parser": "Parser"
+        "parser": "Parser",
+        "hidden": "Hide feature",
+        "access": "Access",
+        "options": "Options"
       },
       "tabs-label": {
         "connection":"Connection",
         "security":"Security",
         "authentication":"Authentication",
-        "settings": "Settings"
+        "settings": "Settings",
+        "ip":"Allowed IP",
+        "from":"Allowed From",
+        "to":"Allowed To",
+        "command":"Disable Commands"
       }
     }
 }
