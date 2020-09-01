@@ -2,14 +2,17 @@
 module.exports = function (RED) {
   'use strict'
   const SMTPServer = require('smtp-server').SMTPServer
-  const SimpleParser = require('mailparser').simpleParser;
+  const SimpleParser = require('mailparser').simpleParser
   const os = require('os')
+  const ip6addr = require('ip6addr')
 
   function SmtpServerNode (config) {
     RED.nodes.createNode(this, config)
 
     // config
     const node = this
+    const context = node.context()
+
     const listen = config.listen || '127.0.0.1'
     const port = config.port || 8025
     const usetls = config.usetls === true
@@ -34,8 +37,11 @@ module.exports = function (RED) {
     const lmtp = config.lmtp === true
     const socketTimeout = (config.socketTimeout || 60) * 1000
     const closeTimeout = (config.closeTimeout || 30) * 1000
+    const ipFilter = config.ipFilter === true
     const ip = config.ip || []
+    const fromFilter = config.fromFilter === true
     const from = config.from || []
+    const toFilter = config.toFilter === true
     const to = config.to || []
     const disabledCommands = config.disabledCommands || []
 
@@ -59,7 +65,7 @@ module.exports = function (RED) {
     const skipImageLinks = config.skipImageLinks === true
     const skipTextLinks = config.skipTextLinks === true
 
-    // tls
+    // TODO: tls
     const key = config.key || null
     const passphrase = config.passphrase || null // for key file
     const cert = config.cert || null
@@ -71,17 +77,28 @@ module.exports = function (RED) {
       authOptional:authOptional,
       secure: usetls,
       onConnect (session, callback) {
-        // check allowed IP's
-        node.status({ fill: 'green', shape: 'dot', text: `${session.remoteAddress} - connected` })
-        return callback() // pass through
+        if(ipFilter === true) {
+          const found = ip.find(obj => ip6addr.createCIDR(obj.ip).contains(session.remoteAddress));
+          if(found !== undefined) {
+            node.status({ fill: 'green', shape: 'dot', text: `${session.remoteAddress} - connected` })
+            return callback()
+          } else {
+            node.status({ fill: 'red', shape: 'dot', text: `IP blocked - ${session.remoteAddress}` })
+            node.warn(`IP blocked: ${session.remoteAddress}`)
+            return callback(new Error("Try again later"))
+          }
+        } else {
+          node.status({ fill: 'green', shape: 'dot', text: `${session.remoteAddress} - connected` })
+          return callback()
+        }
       },
       onAuth (auth, session, callback) {
         if(users.length > 0) {
           var user = undefined;
           if (auth.method === 'PLAIN' || auth.method === 'LOGIN' || auth.method === "XOAUTH2") {
-            user = users.find(u => u.username === auth.username && u.password === auth.password)
+            user = users.find(u => u.u === auth.username && u.p === auth.password)
           } else if(auth.method === "CRAM-MD5") {
-            user = users.find(u => u.username === auth.username && auth.validatePassword(u.password))
+            user = users.find(u => u.u === auth.username && auth.validatePassword(u.p))
           }
           if(user) {
             return callback(null,{ user:user.username })
@@ -94,15 +111,61 @@ module.exports = function (RED) {
         if (auth.method === 'XOAUTH2') {
           return callback(null,{data:{status:'401',schemes:'bearer mac',scope:'https://mail.google.com/'}})
         }
-        return callback(new Error("Invalid authentification"))
+        return callback(new Error("Authentication failed"))
       },
       onMailFrom (address, session, callback) {
-        // check allowed from mail
-        return callback() // pass through
+        if(fromFilter === true) {
+          const match = from.find(function(obj) {
+            if(obj.t === 're') {
+              return (new RegExp(obj.v,'i')).test(address.address);
+            } else if(obj.t === 'str') {
+              return obj.v.toString().toLowerCase().trim() === address.address.toLowerCase().trim();
+            } else if(obj.t === 'flow') {
+              return context.flow.get(obj.v).toString().toLowerCase().trim() === address.address.toLowerCase().trim();
+            } else if(obj.t === 'global') {
+              return context.global.get(obj.v).toString().toLowerCase().trim() === address.address.toLowerCase().trim();
+            } else if(obj.t === 'env') {
+              return node._flow.getSetting(obj.v).toString().toLowerCase().trim() === address.address.toLowerCase().trim();
+            }
+            return false;
+          });
+          if(match !== undefined) {
+            node.status({ fill: 'green', shape: 'dot', text: `${session.remoteAddress} - from` })
+            return callback()
+          }
+          node.status({ fill: 'red', shape: 'dot', text: `Invalid From - ${address}` })
+          node.warn(`Invalid from address: ${address}`)
+          return callback(new Error("Not accepted"))
+        } else {
+          return callback() // pass through
+        }
       },
       onRcptTo (address, session, callback) {
-        // check allowed to main
-        return callback() // pass through
+        if(toFilter === true) {
+          const match = to.find(function(obj) {
+            if(obj.t === 're') {
+              return (new RegExp(obj.v,'i')).test(address.address);
+            } else if(obj.t === 'str') {
+              return obj.v.toString().toLowerCase().trim() === address.address.toLowerCase().trim();
+            } else if(obj.t === 'flow') {
+              return context.flow.get(obj.v).toString().toLowerCase().trim() === address.address.toLowerCase().trim();
+            } else if(obj.t === 'global') {
+              return context.global.get(obj.v).toString().toLowerCase().trim() === address.address.toLowerCase().trim();
+            } else if(obj.t === 'env') {
+              return node._flow.getSetting(obj.v).toString().toLowerCase().trim() === address.address.toLowerCase().trim();
+            }
+            return false;
+          });
+          if(match !== undefined) {
+            node.status({ fill: 'green', shape: 'dot', text: `${session.remoteAddress} - to` })
+            return callback()
+          }
+          node.status({ fill: 'red', shape: 'dot', text: `Invalid To - ${address}` })
+          node.warn(`Invalid To address: ${address}`)
+          return callback(new Error("Not accepted"))
+        } else {
+          return callback() // pass through
+        }
       },
       onData (stream, session, callback) {
         SimpleParser(stream, {
@@ -144,7 +207,7 @@ module.exports = function (RED) {
         stream.on("end", callback);
       },
       onClose (session) {
-        node.status({ fill: 'green', shape: 'dot', text: `${listen}:${port} - ready` })
+        // node.status({ fill: 'green', shape: 'dot', text: `${listen}:${port} - ready` })
       }
     }
 
@@ -178,10 +241,31 @@ module.exports = function (RED) {
     node.status({ fill: 'blue', shape: 'ring', text: `${listen}:${port} - idle` })
   }
 
+  RED.httpAdmin.post('/smtp-server/validate/ip', RED.auth.needsPermission('smtp-server.read'), (req, res) => {
+    const nodeIP = req.body.ip
+    try {
+      ip6addr.parse(nodeIP)
+      res.json({ valid: true })
+    } catch(error) {
+      res.json({ valid: false, error: error.message })
+    }
+  })
+
+  RED.httpAdmin.post('/smtp-server/validate/cidr', RED.auth.needsPermission('smtp-server.read'), (req, res) => {
+    const nodeCIDR = req.body.cidr
+    try {
+      ip6addr.createCIDR(nodeCIDR)
+      res.json({ valid: true })
+    } catch(error) {
+      res.json({ valid: false, error: error.message })
+    }
+  })
+
   RED.nodes.registerType('smtp-server', SmtpServerNode, {
     credentials: {
         username: {type: 'text'},
         password: {type: 'password'}
     }
   })
+
 }

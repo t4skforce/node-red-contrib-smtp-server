@@ -31,14 +31,14 @@
             skipImageLinks: { value: false }, // okay
             skipTextToHtml: { value: false }, // okay
             skipTextLinks: { value: false }, // okay
-            users:{ value: [] },
-            ip:{ value: [{ip:"127.0.0.1", mask:32}, {ip:'10.0.0.0',mask:8},{ip:'172.16.0.0',mask:12},{ip:'192.168.0.0',mask:16}]},
-            ipFilter: { value: true },
-            from:{ value: [{t:'re',v:'/.*/i'}] },
-            fromFilter: { value: false },
-            to:{ value: [{t:'re',v:'/.*/i'}] },
-            toFilter: { value: false },
-            disabledCommands: { value: [] }
+            users:{ value: [] },  // okay
+            ip:{ value: [{ip:'127.0.0.1/32'}, {ip:'10.0.0.0/8'},{ip:'172.16.0.0/12'},{ip:'192.168.0.0/16'}]},  // okay
+            ipFilter: { value: true },  // okay
+            from:{ value: [{t:'re',v:'/.*/i'}] },  // okay
+            fromFilter: { value: false },  // okay
+            to:{ value: [{t:'re',v:'/.*/i'}] },  // okay
+            toFilter: { value: false },  // okay
+            disabledCommands: { value: [] } // TODO
         },
         inputs: 0,
         outputs: 1,
@@ -53,6 +53,33 @@
         align: 'left',
         oneditprepare: function () {
           var node = this;
+
+          var validateIP = function(ip) {
+            var retVal = false;
+            $.ajax({
+              method: "POST",
+              url: "smtp-server/validate/ip",
+              async: false,
+              data: JSON.stringify({ ip:ip }),
+              contentType: "application/json; charset=utf-8",
+              dataType: "json",
+              success: function (result) { retVal = result.valid }
+            });
+            return retVal;
+          };
+          var validateCIDR = function(cidr) {
+            var retVal = false;
+            $.ajax({
+              method: "POST",
+              url: "smtp-server/validate/cidr",
+              async: false,
+              data: JSON.stringify({ cidr:cidr }),
+              contentType: "application/json; charset=utf-8",
+              dataType: "json",
+              success: function (result) { retVal = result.valid }
+            });
+            return retVal;
+          };
 
           var sectabs = RED.tabs.create({
             id: 'node-config-smtp-server-sec-tabs',
@@ -86,7 +113,7 @@
           var listen = $("#node-input-listen");
           listen.typedInput({types:[{
               value:"ip",label:"",icon:"icons/node-red/white-globe.svg",
-              validate:/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+              validate: validateIP
           }]});
           var port = $("#node-input-port");
           port.typedInput({types:[{
@@ -100,7 +127,6 @@
             validate: function(val) { return val === '' || val > 0; }
           }]});
           maxClients.typedInput({type:"num",types:["num"]});
-          // $("#node-input-maxClients").typedInput({default:'str',types:['msg','flow','global','str','num','bool','json','re','date','jsonata','bin','env','node','cred']})
           $("#node-input-socketTimeout").typedInput({types:[{
             value:"num",label:"",icon:"red/images/typedInput/09.svg",
             validate: function(val) { return val === '' || val > 0; }
@@ -143,8 +169,8 @@
                 input.val(value);
               }
 
-              addField(username,'fa-user','username','text', opt.username || '');
-              addField(password,'fa-lock','password','password', opt.password || '');
+              addField(username,'fa-user','username','text', opt.u || '');
+              addField(password,'fa-lock','password','password', opt.p || '');
 
               container[0].appendChild(fragment);
             },
@@ -170,19 +196,14 @@
               var span = $('<span/>').appendTo(label);
               span.text(' '+ipNetmask);
               var input = $('<input/>',{class:"node-input-user-ip",id:"node-input-user-ip-"+i,style:'min-width:310px',type:'text'}).appendTo(row);
-              input.val(opt.ip || '127.0.0.1');
-              input.typedInput({
-                types:[{
-                  value:"ip", label:"", icon:"icons/node-red/white-globe.svg",
-                  validate:/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
-                }]
+              input.val(opt.ip || '127.0.0.1/32');
+              input.typedInput({ types:[{ value:"cidr", label:"", icon:"icons/node-red/white-globe.svg", validate:validateCIDR }] });
+              input.change(function(event){
+                var value = $(this).typedInput('value');
+                if(value.indexOf('/')===-1) {
+                  $(this).typedInput('value',value+'/32');
+                }
               });
-
-              var selectField = $('<select/>',{class:"node-input-rule-type",style:"width:100px; margin-left:5px;"}).appendTo(row);
-              for (var i=0; i<=32; i++) {
-                  selectField.append($("<option></option>").val(i).text(i));
-              }
-              selectField.val(opt.mask || 32);
               container[0].appendChild(fragment);
             },
             removable: true,
@@ -212,7 +233,7 @@
                 types:['str','re','flow','global','env']
               });
               input.typedInput('type',opt.t || 're');
-              input.typedInput('value',opt.v || '/.*/i');
+              input.typedInput('value',opt.v || '.*');
               container[0].appendChild(fragment);
             },
             removable: true,
@@ -242,7 +263,7 @@
                 types:['str','re','flow','global','env']
               });
               input.typedInput('type',opt.t || 're');
-              input.typedInput('value',opt.v || '/.*/i');
+              input.typedInput('value',opt.v || '.*');
               container[0].appendChild(fragment);
             },
             removable: true,
@@ -273,16 +294,49 @@
           })
         },
         oneditsave: function() {
-            var items = $("#node-input-user-container").editableList('items');
             var node = this;
-            node.users= [];
-            items.each(function(i) {
+
+            /* Users */
+            var users = $("#node-input-user-container").editableList('items');
+            node.users = [];
+            users.each(function(i) {
                 var item = $(this);
                 var username = item.find(".node-input-user-username").val().trim();
                 var password = item.find(".node-input-user-password").val().trim();
                 if(username !== '' || (password !== '' && username !== '')) {
-                  node.users.push({ username: username, password: password });
+                  node.users.push({ u: username, p: password });
                 }
+            });
+
+            /* ips */
+            var ips = $("#node-input-ip-container").editableList('items');
+            node.ip = [];
+            ips.each(function(i) {
+              var item = $(this);
+              var ip = item.find(".node-input-user-ip").typedInput('value');
+              node.ip.push({ip:ip});
+            });
+
+            /* From */
+            var users = $("#node-input-from-container").editableList('items');
+            node.from = [];
+            users.each(function(i) {
+                var item = $(this);
+                var input = item.find(".node-input-user-from");
+                var type = input.typedInput('type');
+                var value = input.typedInput('value');
+                node.from.push({t:type,v:value});
+            });
+
+            /* To */
+            var users = $("#node-input-to-container").editableList('items');
+            node.to = [];
+            users.each(function(i) {
+                var item = $(this);
+                var input = item.find(".node-input-user-to");
+                var type = input.typedInput('type');
+                var value = input.typedInput('value');
+                node.to.push({t:type,v:value});
             });
         },
         oneditresize: function(size) {

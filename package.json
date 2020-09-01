@@ -26,7 +26,7 @@
   "dependencies": {
     "mailparser": "^2.8.1",
     "smtp-server": "^3.7.0",
-    "netmask": "^1.0.6"
+    "ip6addr": "^0.2.3"
   },
   "devDependencies": {
     "eslint": "^7.6.0",
