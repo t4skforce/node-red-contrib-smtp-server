@@ -38,7 +38,6 @@
             fromFilter: { value: false },  // okay
             to:{ value: [{t:'re',v:'/.*/i'}] },  // okay
             toFilter: { value: false },  // okay
-            disabledCommands: { value: [] } // TODO
         },
         inputs: 0,
         outputs: 1,
@@ -91,7 +90,6 @@
           sectabs.addTab({ id: 'smtp-server-sec-tab-ip', label: this._('smtp-server.tabs-label.ip') });
           sectabs.addTab({ id: 'smtp-server-sec-tab-from', label: this._('smtp-server.tabs-label.from') });
           sectabs.addTab({ id: 'smtp-server-sec-tab-to', label: this._('smtp-server.tabs-label.to') });
-          sectabs.addTab({ id: 'smtp-server-sec-tab-command', label: this._('smtp-server.tabs-label.command') });
 
           var tabs = RED.tabs.create({
             id: 'node-config-smtp-server-tabs',
@@ -347,7 +345,7 @@
           }
           var editorRow = $("#dialog-form .node-input-user-container-row");
           height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
-          height -= 17;
+          height -= 30;
           if(height < 450) {
             height = 'auto';
           }
@@ -457,25 +455,22 @@
             </div>
             <div id="node-config-smtp-server-sec-tabs-content" style="min-height:150px;">
               <div id="smtp-server-sec-tab-ip" style="display:none">
-                <!-- IP (White/Blacklist) -->
+                <!-- IP (Whitelist) -->
                 <div class="form-row node-input-ip-container-row">
                   <ol id="node-input-ip-container"></ol>
                 </div>
               </div>
               <div id="smtp-server-sec-tab-from" style="display:none">
-                <!-- From (White/Blacklist) -->
+                <!-- From (Whitelist) -->
                 <div class="form-row node-input-from-container-row">
                   <ol id="node-input-from-container"></ol>
                 </div>
               </div>
               <div id="smtp-server-sec-tab-to" style="display:none">
-                <!-- To (White/Blacklist) -->
+                <!-- To (Whitelist) -->
                 <div class="form-row node-input-to-container-row">
                   <ol id="node-input-to-container"></ol>
                 </div>
-              </div>
-              <div id="smtp-server-sec-tab-commands" style="display:none">
-                <!-- disable commands -->
               </div>
             </div>
 
@@ -486,7 +481,7 @@
             <label stlye="with:100px;"><i class="fa fa-lock"></i> <span data-i18n="smtp-server.label.authMethods"></span></label>
             <span class="button-group" role="group"><button type="button" class="red-ui-button toggle authMethods-button-group">PLAIN</button><button type="button" class="red-ui-button toggle authMethods-button-group">LOGIN</button><button type="button" class="red-ui-button toggle authMethods-button-group">CRAM-MD5</button><button type="button" class="red-ui-button toggle authMethods-button-group">XOAUTH2</button></span>
           </div>
-          <div class="form-row node-input-user-container-row">
+          <div class="form-row node-input-user-container-row" style="min-height:300px;">
             <ol id="node-input-user-container"></ol>
           </div>
         </div>

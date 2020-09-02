@@ -76,6 +76,8 @@ module.exports = function (RED) {
       size:size,
       authOptional:authOptional,
       secure: usetls,
+      logger: false,
+      maxAllowedUnauthenticatedCommands: Number.MAX_SAFE_INTEGER,
       onConnect (session, callback) {
         if(ipFilter === true) {
           const found = ip.find(obj => ip6addr.createCIDR(obj.ip).contains(session.remoteAddress));
@@ -180,23 +182,53 @@ module.exports = function (RED) {
             topic: mailMessage.subject,
             date: mailMessage.date,
             payload: mailMessage.text,
+            header: {},
             session: {
               id: session.id,
               remoteAddress: session.remoteAddress,
               clientHostname: session.clientHostname,
               user: session.user,
               transmissionType: session.transmissionType
-            }
+            },
+            messageId: mailMessage.messageId
           };
-          msg.header = {};
+
+          var addrToString = function(addrs) {
+            var retVal = [];
+            addrs.forEach((addr) => {
+              if(addr.name && addr.name.trim() !== "") {
+                retVal.push(`${addr.name} <${addr.address}>`)
+              } else {
+                retVal.push(addr.address)
+              }
+            });
+            return retVal.join(';');
+          };
+
           mailMessage.headers.forEach((v, k) => {msg.header[k] = v;});
           if (mailMessage.html) { msg.html = mailMessage.html; }
-          if (mailMessage.to && mailMessage.to.length > 0) { msg.to = mailMessage.to; }
-          if (mailMessage.cc && mailMessage.cc.length > 0) { msg.cc = mailMessage.cc; }
-          if (mailMessage.bcc && mailMessage.bcc.length > 0) { msg.bcc = mailMessage.bcc; }
-          if (mailMessage.from && mailMessage.from.value && mailMessage.from.value.length > 0) { msg.from = mailMessage.from.value[0].address; }
-          if (mailMessage.attachments) { msg.attachments = mailMessage.attachments; }
-          else { msg.attachments = []; }
+          if (mailMessage.to && mailMessage.to.value && mailMessage.to.value.length > 0) {
+            msg.to = addrToString(mailMessage.to.value);
+          }
+          if (mailMessage.cc && mailMessage.cc.value && mailMessage.cc.value.length > 0) {
+            msg.cc = addrToString(mailMessage.cc.value);
+          }
+          if (mailMessage.bcc && mailMessage.bcc.value && mailMessage.bcc.value.length > 0) {
+            msg.bcc = addrToString(mailMessage.bcc.value);
+          }
+          if (mailMessage.from && mailMessage.from.value && mailMessage.from.value.length > 0) {
+            msg.from = addrToString(mailMessage.from.value);
+          }
+          if (mailMessage.replyTo && mailMessage.replyTo.value && mailMessage.replyTo.value.length > 0) {
+            msg.replyTo = addrToString(mailMessage.replyTo.value);
+          }
+          if (mailMessage.inReplyTo) {
+            msg.inReplyTo = mailMessage.inReplyTo;
+          }
+          if (mailMessage.references) {
+            msg.references = mailMessage.references;
+          }
+          msg.attachments = (mailMessage.attachments)?mailMessage.attachments:[];
           node.send(msg);
           node.status({ fill: 'green', shape: 'dot', text: `${session.remoteAddress} - sendt` })
         })
@@ -230,7 +262,7 @@ module.exports = function (RED) {
 
     server.on('error', err => {
       node.status({ fill: 'red', shape: 'dot', text: 'server error' })
-      node.error(`Error ${err.message}`)
+      node.error({payload:"smtp-server Error",error:err})
     })
 
     node.on('close', function (done) {

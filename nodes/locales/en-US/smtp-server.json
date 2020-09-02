@@ -61,8 +61,7 @@
         "settings": "Settings",
         "ip":"Allowed IP",
         "from":"Allowed From",
-        "to":"Allowed To",
-        "command":"Disable Commands"
+        "to":"Allowed To"
       }
     }
 }
