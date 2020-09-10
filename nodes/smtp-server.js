@@ -197,7 +197,7 @@ module.exports = function (RED) {
             var retVal = [];
             addrs.forEach((addr) => {
               if(addr.name && addr.name.trim() !== "") {
-                retVal.push(`${addr.name} <${addr.address}>`)
+                retVal.push(`"${addr.name}" <${addr.address}>`)
               } else {
                 retVal.push(addr.address)
               }
